@@ -309,27 +309,47 @@ spawn(function()
     end
 end)
 
--- АВТО-ЯЙЦО
+-- АВТО-ЯЙЦО FIX
 EggBtn.Activated:Connect(function()
     AutoEgg = not AutoEgg
     SetBtn(EggBtn, "🥚 Яйцо", AutoEgg)
-    if AutoEgg then EggReady = true end
+    if AutoEgg then
+        EggReady = true
+    end
 end)
 
 local function ClickYes()
-    for _, gui in ipairs(PlayerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") then
-            for _, child in ipairs(gui:GetDescendants()) do
-                if child:IsA("TextButton") and child.Visible then
-                    local t = string.lower(child.Text)
-                    if t == "yes" or string.find(t, "yes") or t == "да" or string.find(t, "да") or t == "confirm" or string.find(t, "confirm") then
-                        pcall(function() child:Activate() end)
-                        return true
-                    end
+    for _, gui in ipairs(PlayerGui:GetDescendants()) do
+        if gui:IsA("GuiButton") and gui.Visible then
+            local text = string.lower(tostring(gui.Text or ""))
+
+            if text == "yes" or text == "да" or
+               string.find(text, "yes") or string.find(text, "да") then
+                pcall(function()
+                    gui:Activate()
+                end)
+                return true
+            end
+        end
+    end
+
+    -- Если YES является текстом внутри другого GUI-объекта
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if obj:IsA("TextLabel") and obj.Visible then
+            local text = string.lower(tostring(obj.Text or ""))
+
+            if text == "yes" or text == "да" then
+                local parent = obj.Parent
+                if parent and parent:IsA("GuiButton") and parent.Visible then
+                    pcall(function()
+                        parent:Activate()
+                    end)
+                    return true
                 end
             end
         end
     end
+
     return false
 end
 
@@ -337,33 +357,58 @@ local function UseEgg()
     local Character = Player.Character
     local Backpack = Player:FindFirstChild("Backpack")
     local Egg = nil
-    if Backpack then Egg = Backpack:FindFirstChild("Protein Egg") end
-    if not Egg and Character then Egg = Character:FindFirstChild("Protein Egg") end
+
+    if Backpack then
+        Egg = Backpack:FindFirstChild("Protein Egg")
+    end
+
+    if not Egg and Character then
+        Egg = Character:FindFirstChild("Protein Egg")
+    end
+
     if Egg then
         pcall(function()
-            if Egg.Parent ~= Character then Egg.Parent = Character end
+            if Egg.Parent ~= Character then
+                local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+                if Humanoid then
+                    Humanoid:EquipTool(Egg)
+                    task.wait(0.2)
+                end
+            end
+
             Egg:Activate()
         end)
-        wait(0.5)
-        for i = 1, 10 do
-            if ClickYes() then return true end
-            wait(0.1)
+
+        -- Даём окну подтверждения появиться
+        task.wait(0.5)
+
+        -- Несколько попыток нажать YES
+        for i = 1, 20 do
+            if ClickYes() then
+                return true
+            end
+            task.wait(0.1)
         end
     end
+
     return false
 end
 
-spawn(function()
-    while wait(1) do
+task.spawn(function()
+    while task.wait(1) do
         if AutoEgg and EggReady then
             if UseEgg() then
                 EggReady = false
-                spawn(function() wait(1800) EggReady = true end)
+
+                task.spawn(function()
+                    task.wait(1800)
+                    EggReady = true
+                end)
             end
         end
     end
 end)
-
+ 
 -- АВТО-ДЮРАБИЛИТИ
 DurBtn.Activated:Connect(function()
     AutoDurability = not AutoDurability
