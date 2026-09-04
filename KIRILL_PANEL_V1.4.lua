@@ -14,7 +14,6 @@ local AutoEgg = false
 local AutoDurability = false
 local AutoKingRock = false
 local EggReady = true
-
 if PlayerGui:FindFirstChild("KIRILL_PANEL_NO_KEY") then PlayerGui:FindFirstChild("KIRILL_PANEL_NO_KEY"):Destroy() end
 
 local Gui = Instance.new("ScreenGui")
@@ -22,7 +21,6 @@ Gui.Name = "KIRILL_PANEL_NO_KEY"
 Gui.ResetOnSpawn = false
 Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 Gui.Parent = PlayerGui
-
 local Open = Instance.new("TextButton")
 Open.Size = UDim2.new(0,45,0,45)
 Open.Position = UDim2.new(1,-55,0,10)
@@ -34,7 +32,6 @@ Open.Font = Enum.Font.GothamBlack
 Open.BorderSizePixel = 0
 Open.Parent = Gui
 Instance.new("UICorner", Open).CornerRadius = UDim.new(1,0)
-
 local Panel = Instance.new("Frame")
 Panel.Size = UDim2.new(0,230,0,280)
 Panel.Position = UDim2.new(0.5,-115,0.5,-140)
@@ -49,7 +46,6 @@ TitleBar.Size = UDim2.new(1,0,0,35)
 TitleBar.BackgroundColor3 = Color3.fromRGB(35,35,35)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Panel
-
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1,-40,1,0)
 Title.Position = UDim2.new(0,10,0,0)
@@ -60,7 +56,6 @@ Title.TextSize = 10
 Title.Font = Enum.Font.GothamBlack
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TitleBar
-
 local Close = Instance.new("TextButton")
 Close.Size = UDim2.new(0,25,0,25)
 Close.Position = UDim2.new(1,-32,0,5)
@@ -72,7 +67,6 @@ Close.Font = Enum.Font.GothamBlack
 Close.BorderSizePixel = 0
 Close.Parent = TitleBar
 Instance.new("UICorner", Close).CornerRadius = UDim.new(0,5)
-
 local UserInputService = game:GetService("UserInputService")
 local Dragging = false
 local DragStart = nil
@@ -85,13 +79,11 @@ TitleBar.InputBegan:Connect(function(Input)
         StartPos = Panel.Position
     end
 end)
-
 TitleBar.InputEnded:Connect(function(Input)
     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
         Dragging = false
     end
 end)
-
 UserInputService.InputChanged:Connect(function(Input)
     if not Dragging then return end
     if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
@@ -99,7 +91,6 @@ UserInputService.InputChanged:Connect(function(Input)
         Panel.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
     end
 end)
-
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1,-10,1,-40)
 Scroll.Position = UDim2.new(0,5,0,40)
@@ -110,7 +101,6 @@ Scroll.ScrollBarThickness = 4
 Scroll.ScrollBarImageColor3 = Color3.fromRGB(80,80,80)
 Scroll.ScrollingDirection = Enum.ScrollingDirection.Y
 Scroll.Parent = Panel
-
 local function CreateButton(Text, Y)
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(1,-10,0,40)
@@ -125,7 +115,6 @@ local function CreateButton(Text, Y)
     Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,6)
     return Btn
 end
-
 local TrainBtn = CreateButton("💪 Авто-Прокачка: ВЫКЛ", 2)
 local WeightBtn = CreateButton("🏋️ Авто-Гантеля: ВЫКЛ", 46)
 local RebirthBtn = CreateButton("🔄 Ребитх: ВЫКЛ", 90)
@@ -134,7 +123,6 @@ local AFKBtn = CreateButton("🛡️ Анти-Афк: ВЫКЛ", 178)
 local EggBtn = CreateButton("🥚 Яйцо: ВЫКЛ", 222)
 local DurBtn = CreateButton("🥊 Дюрабилити: ВЫКЛ", 266)
 local KingRockBtn = CreateButton("🗿 Кинг-Камень: ВЫКЛ", 310)
-
 local function SetBtn(Btn, Text, On)
     if On then
         Btn.Text = Text .. ": ВКЛ"
@@ -178,7 +166,7 @@ end)
 WeightBtn.Activated:Connect(function()
     AutoWeight = not AutoWeight
     SetBtn(WeightBtn, "🏋️ Авто-Гантеля", AutoWeight)
-    
+
     -- Если выключили - убираем гантелю
     if not AutoWeight then
         pcall(function()
@@ -205,7 +193,7 @@ spawn(function()
                     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
                     local Backpack = Player:FindFirstChild("Backpack")
                     local Weight = nil
-                    
+
                     -- Ищем ТОЛЬКО Weight
                     if Backpack then
                         Weight = Backpack:FindFirstChild("Weight")
@@ -213,17 +201,17 @@ spawn(function()
                     if not Weight and Character then
                         Weight = Character:FindFirstChild("Weight")
                     end
-                    
+
                     if Weight and Humanoid then
                         -- Экипируем
                         if Weight.Parent ~= Character then
                             Humanoid:EquipTool(Weight)
                             wait(0.2)
                         end
-                        
+
                         -- Активируем
                         Weight:Activate()
-                        
+
                         -- Отправляем rep
                         local MuscleEvent = Player:FindFirstChild("muscleEvent")
                         if MuscleEvent then
@@ -309,52 +297,31 @@ spawn(function()
     end
 end)
 
--- АВТО-ЯЙЦО FIX
+-- АВТО-ЯЙЦО
 EggBtn.Activated:Connect(function()
     AutoEgg = not AutoEgg
     SetBtn(EggBtn, "🥚 Яйцо", AutoEgg)
-    if AutoEgg then
-        EggReady = true
-    end
+    if AutoEgg then EggReady = true end
 end)
 
 local function ClickYes()
-    for _, gui in ipairs(PlayerGui:GetDescendants()) do
-        if gui:IsA("GuiButton") and gui.Visible then
-            local text = string.lower(tostring(gui.Text or ""))
-
-            if text == "yes" or text == "да" or
-               string.find(text, "yes") or string.find(text, "да") then
-                pcall(function()
-                    gui:Activate()
-                    task.wait(0.1)
-                    gui:Activate()
-                end)
-                return true
-            end
-        end
-    end
-
-    return false
-end
-
-    -- Если YES является текстом внутри другого GUI-объекта
-    for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if obj:IsA("TextLabel") and obj.Visible then
-            local text = string.lower(tostring(obj.Text or ""))
-
-            if text == "yes" or text == "да" then
-                local parent = obj.Parent
-                if parent and parent:IsA("GuiButton") and parent.Visible then
-                    pcall(function()
-                        parent:Activate()
-                    end)
-                    return true
+    for _, gui in ipairs(PlayerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            for _, child in ipairs(gui:GetDescendants()) do
+                if child:IsA("TextButton") and child.Visible then
+                    local t = string.lower(child.Text)
+                    if t == "yes" or string.find(t, "yes") or t == "да" or string.find(t, "да") or t == "confirm" or string.find(t, "confirm") then
+                        pcall(function()
+                            child:Activate()
+                            wait(0.1)
+                            child:Activate()
+                        end)
+                        return true
+                    end
                 end
             end
         end
     end
-
     return false
 end
 
@@ -362,58 +329,33 @@ local function UseEgg()
     local Character = Player.Character
     local Backpack = Player:FindFirstChild("Backpack")
     local Egg = nil
-
-    if Backpack then
-        Egg = Backpack:FindFirstChild("Protein Egg")
-    end
-
-    if not Egg and Character then
-        Egg = Character:FindFirstChild("Protein Egg")
-    end
-
+    if Backpack then Egg = Backpack:FindFirstChild("Protein Egg") end
+    if not Egg and Character then Egg = Character:FindFirstChild("Protein Egg") end
     if Egg then
         pcall(function()
-            if Egg.Parent ~= Character then
-                local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
-                if Humanoid then
-                    Humanoid:EquipTool(Egg)
-                    task.wait(0.2)
-                end
-            end
-
+            if Egg.Parent ~= Character then Egg.Parent = Character end
             Egg:Activate()
         end)
-
-        -- Даём окну подтверждения появиться
-        task.wait(0.5)
-
-        -- Несколько попыток нажать YES
-        for i = 1, 20 do
-            if ClickYes() then
-                return true
-            end
-            task.wait(0.1)
+        wait(0.5)
+        for i = 1, 10 do
+            if ClickYes() then return true end
+            wait(0.1)
         end
     end
-
     return false
 end
 
-task.spawn(function()
-    while task.wait(1) do
+spawn(function()
+    while wait(1) do
         if AutoEgg and EggReady then
             if UseEgg() then
                 EggReady = false
-
-                task.spawn(function()
-                    task.wait(1800)
-                    EggReady = true
-                end)
+                spawn(function() wait(1800) EggReady = true end)
             end
         end
     end
 end)
- 
+
 -- АВТО-ДЮРАБИЛИТИ
 DurBtn.Activated:Connect(function()
     AutoDurability = not AutoDurability
@@ -440,16 +382,15 @@ spawn(function()
                             Humanoid:EquipTool(Punch)
                             wait(0.1)
                         end
-                        
+
                         local Durability = Player:FindFirstChild("Durability")
                         if Durability then
                             local CurrentDurability = tonumber(Durability.Value) or 0
                             local MachinesFolder = workspace:FindFirstChild("machinesFolder")
-                            
+
                             if MachinesFolder then
                                 local BestRock = nil
                                 local BestRequired = -1
-                                
                                 for _, Machine in ipairs(MachinesFolder:GetChildren()) do
                                     local Rock = Machine:FindFirstChild("Rock")
                                     if Rock and Rock:IsA("BasePart") then
@@ -466,7 +407,7 @@ spawn(function()
                                         end
                                     end
                                 end
-                                
+
                                 if BestRock then
                                     local Root = Character:FindFirstChild("HumanoidRootPart")
                                     if Root then
@@ -474,9 +415,9 @@ spawn(function()
                                         local Position = BestRock.Position - BestRock.CFrame.LookVector * Distance
                                         Root.CFrame = CFrame.lookAt(Position, BestRock.Position)
                                     end
-                                    
+
                                     Punch:Activate()
-                                    
+
                                     local MuscleEvent = Player:FindFirstChild("muscleEvent")
                                     if MuscleEvent then
                                         MuscleEvent:FireServer("punch", "leftHand")
@@ -507,11 +448,11 @@ spawn(function()
                 if Character then
                     local Root = Character:FindFirstChild("HumanoidRootPart")
                     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-                    
+
                     if Root then
                         Root.CFrame = CFrame.new(-8928.078, 13.199, -6004.433)
                         wait(0.1)
-                        
+
                         local Backpack = Player:FindFirstChild("Backpack")
                         local Punch = nil
                         if Backpack then
@@ -528,15 +469,15 @@ spawn(function()
                                 end
                             end
                         end
-                        
+
                         if Punch and Humanoid then
                             if Punch.Parent ~= Character then
                                 Humanoid:EquipTool(Punch)
                                 wait(0.1)
                             end
-                            
+
                             Punch:Activate()
-                            
+
                             local MuscleEvent = Player:FindFirstChild("muscleEvent")
                             if MuscleEvent then
                                 MuscleEvent:FireServer("punch", "leftHand")
