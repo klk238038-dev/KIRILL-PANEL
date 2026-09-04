@@ -301,19 +301,24 @@ end)
 EggBtn.Activated:Connect(function()
     AutoEgg = not AutoEgg
     SetBtn(EggBtn, "🥚 Яйцо", AutoEgg)
-    if AutoEgg then EggReady = true end
+
+    if AutoEgg then
+        EggReady = true
+    end
 end)
 
 local function ClickYes()
     for _, gui in ipairs(PlayerGui:GetDescendants()) do
         if gui:IsA("GuiButton") and gui.Visible then
-            local t = string.lower(tostring(gui.Text or ""))
+            local text = string.lower(tostring(gui.Text or ""))
 
-            if t == "yes" or string.find(t, "yes") or
-               t == "да" or string.find(t, "да") then
+            if text == "yes" or string.find(text, "yes") or
+               text == "да" or string.find(text, "да") then
+
                 pcall(function()
                     gui:Activate()
                 end)
+
                 return true
             end
         end
@@ -325,17 +330,8 @@ end
 local function UseEgg()
     local Character = Player.Character
     local Backpack = Player:FindFirstChild("Backpack")
-    local Egg = nil
 
-    if Backpack then
-        Egg = Backpack:FindFirstChild("Protein Egg")
-    end
-
-    if not Egg and Character then
-        Egg = Character:FindFirstChild("Protein Egg")
-    end
-
-    if not Egg or not Character then
+    if not Character or not Backpack then
         return false
     end
 
@@ -344,50 +340,71 @@ local function UseEgg()
         return false
     end
 
-    -- 1-й раз: берём яйцо
+    local Egg = Backpack:FindFirstChild("Protein Egg")
+        or Character:FindFirstChild("Protein Egg")
+
+    if not Egg then
+        return false
+    end
+
+    -- 1. Берём яйцо
     Humanoid:EquipTool(Egg)
     task.wait(0.5)
 
-    -- 1-е использование
-    Egg:Activate()
+    -- 2. Нажимаем первый раз
+    if Egg.Parent == Character then
+        Egg:Activate()
+    end
+
     task.wait(0.5)
 
-    -- Убираем яйцо из рук
+    -- 3. Бросаем/убираем яйцо
     if Egg.Parent == Character then
         Egg.Parent = Backpack
     end
+
     task.wait(0.5)
 
-    -- 2-й раз: снова берём яйцо
-    Humanoid:EquipTool(Egg)
+    -- 4. Снова берём яйцо
+    if Egg.Parent == Backpack then
+        Humanoid:EquipTool(Egg)
+    end
+
     task.wait(0.5)
 
-    -- 2-е использование
-    Egg:Activate()
+    -- 5. Нажимаем второй раз
+    if Egg.Parent == Character then
+        Egg:Activate()
+    end
+
     task.wait(0.5)
 
-    -- Нажимаем YES один раз
-    for i = 1, 10 do
+    -- 6. Нажимаем YES один раз
+    for i = 1, 15 do
         if ClickYes() then
             return true
         end
+
         task.wait(0.1)
     end
 
     return false
 end
 
-spawn(function()
-    while wait(1) do
+task.spawn(function()
+    while task.wait(1) do
         if AutoEgg and EggReady then
             if UseEgg() then
                 EggReady = false
-                spawn(function() wait(1800) EggReady = true end)
+
+                task.spawn(function()
+                    task.wait(1800)
+                    EggReady = true
+                end)
             end
         end
     end
 end)
-
 -- АВТО-ДЮРАБИЛИТИ
 DurBtn.Activated:Connect(function()
     AutoDurability = not AutoDurability
