@@ -305,23 +305,20 @@ EggBtn.Activated:Connect(function()
 end)
 
 local function ClickYes()
-    for _, gui in ipairs(PlayerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") then
-            for _, child in ipairs(gui:GetDescendants()) do
-                if child:IsA("TextButton") and child.Visible then
-                    local t = string.lower(child.Text)
-                    if t == "yes" or string.find(t, "yes") or t == "да" or string.find(t, "да") or t == "confirm" or string.find(t, "confirm") then
-                        pcall(function()
-                            child:Activate()
-                            wait(0.1)
-                            child:Activate()
-                        end)
-                        return true
-                    end
-                end
+    for _, gui in ipairs(PlayerGui:GetDescendants()) do
+        if gui:IsA("GuiButton") and gui.Visible then
+            local t = string.lower(tostring(gui.Text or ""))
+
+            if t == "yes" or string.find(t, "yes") or
+               t == "да" or string.find(t, "да") then
+                pcall(function()
+                    gui:Activate()
+                end)
+                return true
             end
         end
     end
+
     return false
 end
 
@@ -329,19 +326,54 @@ local function UseEgg()
     local Character = Player.Character
     local Backpack = Player:FindFirstChild("Backpack")
     local Egg = nil
-    if Backpack then Egg = Backpack:FindFirstChild("Protein Egg") end
-    if not Egg and Character then Egg = Character:FindFirstChild("Protein Egg") end
-    if Egg then
-        pcall(function()
-            if Egg.Parent ~= Character then Egg.Parent = Character end
-            Egg:Activate()
-        end)
-        wait(0.5)
-        for i = 1, 10 do
-            if ClickYes() then return true end
-            wait(0.1)
-        end
+
+    if Backpack then
+        Egg = Backpack:FindFirstChild("Protein Egg")
     end
+
+    if not Egg and Character then
+        Egg = Character:FindFirstChild("Protein Egg")
+    end
+
+    if not Egg or not Character then
+        return false
+    end
+
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    if not Humanoid then
+        return false
+    end
+
+    -- 1-й раз: берём яйцо
+    Humanoid:EquipTool(Egg)
+    task.wait(0.5)
+
+    -- 1-е использование
+    Egg:Activate()
+    task.wait(0.5)
+
+    -- Убираем яйцо из рук
+    if Egg.Parent == Character then
+        Egg.Parent = Backpack
+    end
+    task.wait(0.5)
+
+    -- 2-й раз: снова берём яйцо
+    Humanoid:EquipTool(Egg)
+    task.wait(0.5)
+
+    -- 2-е использование
+    Egg:Activate()
+    task.wait(0.5)
+
+    -- Нажимаем YES один раз
+    for i = 1, 10 do
+        if ClickYes() then
+            return true
+        end
+        task.wait(0.1)
+    end
+
     return false
 end
 
