@@ -327,11 +327,16 @@ local function ClickYes()
                string.find(text, "yes") or string.find(text, "да") then
                 pcall(function()
                     gui:Activate()
+                    task.wait(0.1)
+                    gui:Activate()
                 end)
                 return true
             end
         end
     end
+
+    return false
+end
 
     -- Если YES является текстом внутри другого GUI-объекта
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
