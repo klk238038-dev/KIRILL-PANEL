@@ -29,7 +29,9 @@ local ESPCache = {}
 --==================================================
 
 local OldGui = PlayerGui:FindFirstChild("KIRILL_PANEL_NO_KEY_V1")
-if OldGui then OldGui:Destroy() end
+if OldGui then
+    OldGui:Destroy()
+end
 
 --==================================================
 -- ВЫБОР ЯЗЫКА
@@ -99,13 +101,16 @@ RussianBtn.Activated:Connect(function()
     LangGui:Destroy()
 end)
 
-repeat task.wait() until LanguageChosen
+repeat
+    task.wait()
+until LanguageChosen
 
 --==================================================
 -- ТЕКСТЫ
 --==================================================
 
 local T = {
+
     ru = {
         title = "KIRILL_PANEL NO KEY V1",
         autofarm = "🪙 Авто-Сбор Монет",
@@ -129,6 +134,7 @@ local T = {
         off = "OFF",
         on = "ON"
     }
+
 }
 
 local function L(Name)
@@ -198,30 +204,41 @@ Close.Parent = TitleBar
 
 Instance.new("UICorner", Close).CornerRadius = UDim.new(0,5)
 
-local Dragging, DragStart, StartPos = false, nil, nil
+local Dragging = false
+local DragStart = nil
+local StartPos = nil
 
 TitleBar.InputBegan:Connect(function(Input)
+
     if Input.UserInputType == Enum.UserInputType.MouseButton1
         or Input.UserInputType == Enum.UserInputType.Touch then
 
         Dragging = true
         DragStart = Input.Position
         StartPos = Panel.Position
+
     end
+
 end)
 
 TitleBar.InputEnded:Connect(function(Input)
+
     if Input.UserInputType == Enum.UserInputType.MouseButton1
         or Input.UserInputType == Enum.UserInputType.Touch then
 
         Dragging = false
+
     end
+
 end)
 
 UserInputService.InputChanged:Connect(function(Input)
+
     if Dragging
-        and (Input.UserInputType == Enum.UserInputType.MouseMovement
-        or Input.UserInputType == Enum.UserInputType.Touch) then
+        and (
+            Input.UserInputType == Enum.UserInputType.MouseMovement
+            or Input.UserInputType == Enum.UserInputType.Touch
+        ) then
 
         local Delta = Input.Position - DragStart
 
@@ -231,7 +248,9 @@ UserInputService.InputChanged:Connect(function(Input)
             StartPos.Y.Scale,
             StartPos.Y.Offset + Delta.Y
         )
+
     end
+
 end)
 
 local Scroll = Instance.new("ScrollingFrame")
@@ -244,6 +263,7 @@ Scroll.ScrollBarThickness = 4
 Scroll.Parent = Panel
 
 local function CreateButton(Text, Y)
+
     local Btn = Instance.new("TextButton")
 
     Btn.Size = UDim2.new(1,-10,0,40)
@@ -261,6 +281,7 @@ local function CreateButton(Text, Y)
     Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,6)
 
     return Btn
+
 end
 
 local FarmBtn = CreateButton(
@@ -298,24 +319,31 @@ FlingBtn.BackgroundColor3 = Color3.fromRGB(180,80,20)
 local function SetBtn(Btn, Text, On)
 
     if On then
+
         Btn.Text = Text .. ": " .. L("on")
         Btn.BackgroundColor3 = Color3.fromRGB(50,160,70)
 
     else
+
         Btn.Text = Text .. ": " .. L("off")
         Btn.BackgroundColor3 = Color3.fromRGB(150,50,50)
+
     end
 
 end
 
 Open.Activated:Connect(function()
+
     Panel.Visible = true
     Open.Visible = false
+
 end)
 
 Close.Activated:Connect(function()
+
     Panel.Visible = false
     Open.Visible = true
+
 end)
 
 --==================================================
@@ -334,9 +362,11 @@ FarmBtn.Activated:Connect(function()
 
 end)
 
+-- Убираем столкновения с частями своего персонажа
 RunService.Stepped:Connect(function()
 
-    if AutoFarmCoins and Player.Character then
+    if AutoFarmCoins
+        and Player.Character then
 
         for _, Part in ipairs(
             Player.Character:GetDescendants()
@@ -352,78 +382,289 @@ RunService.Stepped:Connect(function()
 
 end)
 
+-- Проверяем, является ли объект визуальной монетой
+local function IsCoinObject(Object)
+
+    local Name = string.lower(Object.Name)
+
+    return
+        Name == "coin"
+        or Name == "coinvisual"
+        or Name == "coin_visual"
+        or Name == "coin_server"
+        or Name == "coinserver"
+        or Name == "snowflake"
+        or Name == "candy"
+
+end
+
+-- Получаем BasePart из монеты
+local function GetCoinPart(Object)
+
+    if not Object then
+        return nil
+    end
+
+    if Object:IsA("BasePart") then
+        return Object
+    end
+
+    if Object:IsA("Model") then
+
+        if Object.PrimaryPart then
+            return Object.PrimaryPart
+        end
+
+        return Object:FindFirstChildWhichIsA(
+            "BasePart",
+            true
+        )
+
+    end
+
+    return Object:FindFirstChildWhichIsA(
+        "BasePart",
+        true
+    )
+
+end
+
+-- Получаем все монеты
 local function GetCoins()
 
     local Coins = {}
+    local Added = {}
+
+    local function AddCoin(Object)
+
+        if not Object then
+            return
+        end
+
+        local Part = GetCoinPart(Object)
+
+        if not Part then
+            return
+        end
+
+        if Added[Part] then
+            return
+        end
+
+        if not Part:IsDescendantOf(Workspace) then
+            return
+        end
+
+        if Part.Transparency >= 1 then
+            return
+        end
+
+        Added[Part] = true
+        table.insert(Coins, Part)
+
+    end
 
     for _, Object in ipairs(
         Workspace:GetDescendants()
     ) do
 
-        if Object.Name == "CoinContainer"
-            or Object.Name == "Coin_Container" then
+        -- Обычная / визуальная монета
+        if IsCoinObject(Object) then
+            AddCoin(Object)
+        end
 
-            for _, Coin in ipairs(
+        -- CoinContainer
+        local Name = string.lower(Object.Name)
+
+        if Name == "coincontainer"
+            or Name == "coin_container" then
+
+            for _, Child in ipairs(
                 Object:GetChildren()
             ) do
 
-                if Coin:IsA("BasePart") then
-                    table.insert(Coins, Coin)
+                if Child.Name
+                    and (
+                        IsCoinObject(Child)
+                        or Child:IsA("BasePart")
+                        or Child:IsA("Model")
+                    ) then
+
+                    AddCoin(Child)
+
                 end
 
             end
-
-        elseif Object:IsA("TouchTransmitter")
-            and Object.Parent
-            and (
-                Object.Parent.Name == "Coin"
-                or Object.Parent.Name == "Snowflake"
-                or Object.Parent.Name == "Candy"
-            ) then
-
-            table.insert(Coins, Object.Parent)
 
         end
 
     end
 
     return Coins
+
 end
 
+-- Находим ближайшую монету
+local function GetNearestCoin(Root, Coins)
+
+    local Nearest = nil
+    local NearestDistance = math.huge
+
+    for _, Coin in ipairs(Coins) do
+
+        if Coin
+            and Coin.Parent
+            and Coin:IsDescendantOf(Workspace) then
+
+            local Distance =
+                (Root.Position - Coin.Position).Magnitude
+
+            if Distance < NearestDistance then
+
+                NearestDistance = Distance
+                Nearest = Coin
+
+            end
+
+        end
+
+    end
+
+    return Nearest
+
+end
+
+-- Летим к монете со скоростью бега
+local function FlyToCoin(Root, Humanoid, Coin)
+
+    if not Root
+        or not Humanoid
+        or not Coin
+        or not Coin.Parent then
+
+        return
+
+    end
+
+    -- Если включена SpeedBoost, максимальная
+    -- скорость бега панели = 24
+    local RunSpeed = Humanoid.WalkSpeed
+
+    if RunSpeed < 24 then
+        RunSpeed = 24
+    end
+
+    while AutoFarmCoins
+        and Root.Parent
+        and Coin
+        and Coin.Parent
+        and Coin:IsDescendantOf(Workspace) do
+
+        local TargetPosition = Coin.Position
+        local CurrentPosition = Root.Position
+
+        local Difference =
+            TargetPosition - CurrentPosition
+
+        local Distance = Difference.Magnitude
+
+        -- Монета уже рядом
+        if Distance <= 3 then
+            break
+        end
+
+        local Direction = Difference.Unit
+
+        -- Поворачиваем персонажа к монете
+        Root.CFrame = CFrame.lookAt(
+            CurrentPosition,
+            TargetPosition
+        )
+
+        -- Полёт со скоростью бега
+        Root.AssemblyLinearVelocity =
+            Direction * RunSpeed
+
+        task.wait()
+
+    end
+
+    -- Останавливаемся после достижения монеты
+    if Root and Root.Parent then
+
+        Root.AssemblyLinearVelocity =
+            Vector3.zero
+
+    end
+
+end
+
+-- Основной Auto-Farm
 task.spawn(function()
 
-    while task.wait(0.1) do
+    while task.wait(0.05) do
 
         if AutoFarmCoins then
 
             pcall(function()
 
                 local Char = Player.Character
+
                 local Root = Char
-                    and Char:FindFirstChild("HumanoidRootPart")
+                    and Char:FindFirstChild(
+                        "HumanoidRootPart"
+                    )
 
-                if Root then
+                local Humanoid = Char
+                    and Char:FindFirstChildOfClass(
+                        "Humanoid"
+                    )
 
-                    local Coins = GetCoins()
+                if not Root or not Humanoid then
+                    return
+                end
 
-                    for _, Coin in ipairs(Coins) do
+                local Coins = GetCoins()
 
-                        if not AutoFarmCoins then
+                while AutoFarmCoins
+                    and #Coins > 0
+                    and Root.Parent do
+
+                    -- Берём ближайшую монету
+                    local Coin =
+                        GetNearestCoin(
+                            Root,
+                            Coins
+                        )
+
+                    if not Coin then
+                        break
+                    end
+
+                    -- Летим к ней
+                    FlyToCoin(
+                        Root,
+                        Humanoid,
+                        Coin
+                    )
+
+                    -- Удаляем её из текущего списка
+                    for Index = #Coins, 1, -1 do
+
+                        if Coins[Index] == Coin then
+
+                            table.remove(
+                                Coins,
+                                Index
+                            )
+
                             break
-                        end
-
-                        if Coin
-                            and Coin.Parent
-                            and Coin:IsA("BasePart")
-                            and Coin.Transparency < 1 then
-
-                            Root.CFrame = Coin.CFrame
-
-                            task.wait(0.15)
 
                         end
 
                     end
+
+                    task.wait(0.03)
 
                 end
 
@@ -481,16 +722,19 @@ local function GetRole(TargetPlayer)
     if (Character and Character:FindFirstChild("Knife"))
         or (Backpack and Backpack:FindFirstChild("Knife")) then
 
-        return "Убийца", Color3.fromRGB(255,0,0)
+        return "Убийца",
+            Color3.fromRGB(255,0,0)
 
     elseif (Character and Character:FindFirstChild("Gun"))
         or (Backpack and Backpack:FindFirstChild("Gun")) then
 
-        return "Шериф", Color3.fromRGB(0,120,255)
+        return "Шериф",
+            Color3.fromRGB(0,120,255)
 
     end
 
-    return "Мирный", Color3.fromRGB(0,255,100)
+    return "Мирный",
+        Color3.fromRGB(0,255,100)
 
 end
 
@@ -506,8 +750,12 @@ RunService.RenderStepped:Connect(function()
 
         if Target ~= Player
             and Target.Character
-            and Target.Character:FindFirstChild("HumanoidRootPart")
-            and Target.Character:FindFirstChild("Humanoid") then
+            and Target.Character:FindFirstChild(
+                "HumanoidRootPart"
+            )
+            and Target.Character:FindFirstChild(
+                "Humanoid"
+            ) then
 
             local Char = Target.Character
             local Root = Char.HumanoidRootPart
@@ -521,9 +769,12 @@ RunService.RenderStepped:Connect(function()
 
                 Data = {}
 
-                local Highlight = Instance.new("Highlight")
+                local Highlight =
+                    Instance.new("Highlight")
 
-                Highlight.Name = "MM2_ESP_Highlight"
+                Highlight.Name =
+                    "MM2_ESP_Highlight"
+
                 Highlight.Adornee = Char
                 Highlight.FillTransparency = 0.4
                 Highlight.OutlineTransparency = 0
@@ -531,23 +782,35 @@ RunService.RenderStepped:Connect(function()
 
                 Data.Highlight = Highlight
 
-                local Billboard = Instance.new("BillboardGui")
+                local Billboard =
+                    Instance.new("BillboardGui")
 
-                Billboard.Name = "MM2_ESP_Billboard"
+                Billboard.Name =
+                    "MM2_ESP_Billboard"
+
                 Billboard.Adornee = Root
-                Billboard.Size = UDim2.new(0,120,0,40)
-                Billboard.StudsOffset = Vector3.new(0,3,0)
+                Billboard.Size =
+                    UDim2.new(0,120,0,40)
+
+                Billboard.StudsOffset =
+                    Vector3.new(0,3,0)
+
                 Billboard.AlwaysOnTop = true
 
-                local Label = Instance.new("TextLabel")
+                local Label =
+                    Instance.new("TextLabel")
 
-                Label.Size = UDim2.new(1,0,1,0)
+                Label.Size =
+                    UDim2.new(1,0,1,0)
+
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.GothamBold
                 Label.TextSize = 12
                 Label.TextColor3 = RoleColor
                 Label.TextStrokeTransparency = 0.1
-                Label.TextStrokeColor3 = Color3.fromRGB(0,0,0)
+                Label.TextStrokeColor3 =
+                    Color3.fromRGB(0,0,0)
+
                 Label.Parent = Billboard
 
                 Billboard.Parent = Char
@@ -559,8 +822,11 @@ RunService.RenderStepped:Connect(function()
 
             end
 
-            Data.Highlight.FillColor = RoleColor
-            Data.Highlight.OutlineColor = RoleColor
+            Data.Highlight.FillColor =
+                RoleColor
+
+            Data.Highlight.OutlineColor =
+                RoleColor
 
             local MyRoot =
                 Player.Character
@@ -571,9 +837,14 @@ RunService.RenderStepped:Connect(function()
             local Dist = 0
 
             if MyRoot then
+
                 Dist = math.floor(
-                    (MyRoot.Position - Root.Position).Magnitude
+                    (
+                        MyRoot.Position
+                        - Root.Position
+                    ).Magnitude
                 )
+
             end
 
             Data.Label.Text =
@@ -584,7 +855,8 @@ RunService.RenderStepped:Connect(function()
                 .. Dist
                 .. "m"
 
-            Data.Label.TextColor3 = RoleColor
+            Data.Label.TextColor3 =
+                RoleColor
 
         else
 
@@ -650,7 +922,8 @@ task.spawn(function()
                     if DropGun
                         and DropGun:IsA("BasePart") then
 
-                        Root.CFrame = DropGun.CFrame
+                        Root.CFrame =
+                            DropGun.CFrame
 
                     end
 
@@ -680,7 +953,9 @@ SpeedBtn.Activated:Connect(function()
 
     if not SpeedBoost
         and Player.Character
-        and Player.Character:FindFirstChild("Humanoid") then
+        and Player.Character:FindFirstChild(
+            "Humanoid"
+        ) then
 
         Player.Character.Humanoid.WalkSpeed = 16
 
@@ -692,7 +967,9 @@ RunService.RenderStepped:Connect(function()
 
     if SpeedBoost
         and Player.Character
-        and Player.Character:FindFirstChild("Humanoid") then
+        and Player.Character:FindFirstChild(
+            "Humanoid"
+        ) then
 
         Player.Character.Humanoid.WalkSpeed = 24
 
@@ -726,6 +1003,7 @@ FlingBtn.Activated:Connect(function()
 
             FlingingAll = false
             FlingBtn.Text = L("fling")
+
             return
 
         end
@@ -778,7 +1056,8 @@ FlingBtn.Activated:Connect(function()
         Root.RotVelocity =
             Vector3.new(0,0,0)
 
-        Root.CFrame = SavedCFrame
+        Root.CFrame =
+            SavedCFrame
 
         FlingingAll = false
         FlingBtn.Text = L("fling")
@@ -812,6 +1091,7 @@ task.spawn(function()
             pcall(function()
 
                 VirtualUser:CaptureController()
+
                 VirtualUser:ClickButton2(
                     Vector2.new(0,0)
                 )
