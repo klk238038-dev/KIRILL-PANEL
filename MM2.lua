@@ -19,6 +19,8 @@ local ESPEnabled = false
 local AutoGrabGun = false
 local AntiAFK = false
 local SpeedBoost = false
+local SpinBotEnabled = false
+local FlingingAll = false
 
 local CurrentLanguage = "ru"
 local ESPCache = {}
@@ -111,8 +113,10 @@ local T = {
         esp = "👁️ ESP (Подсветка)",
         grabgun = "🔫 Авто-Забор Пушки",
         speed = "⚡ Скорость Бега",
+        spin = "🌀 Быстрое Вращение",
+        fling = "🚀 Выкинуть Всех (Fling)",
         afk = "🛡️ Анти-АФК",
-        kick = "🚪 Выкинуть Всех (Выход)",
+        kick = "🚪 Выход с Сервера",
         off = "ВЫКЛ",
         on = "ВКЛ"
     },
@@ -122,6 +126,8 @@ local T = {
         esp = "👁️ ESP Player Roles",
         grabgun = "🔫 Auto-Grab Gun",
         speed = "⚡ WalkSpeed",
+        spin = "🌀 SpinBot",
+        fling = "🚀 Fling All Players",
         afk = "🛡️ Anti-AFK",
         kick = "🚪 Leave Server",
         off = "OFF",
@@ -157,8 +163,8 @@ Open.Parent = Gui
 Instance.new("UICorner", Open).CornerRadius = UDim.new(1,0)
 
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0,230,0,290)
-Panel.Position = UDim2.new(0.5,-115,0.5,-145)
+Panel.Size = UDim2.new(0,230,0,370)
+Panel.Position = UDim2.new(0.5,-115,0.5,-185)
 Panel.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Panel.BorderSizePixel = 0
 Panel.Visible = false
@@ -196,7 +202,6 @@ Close.Parent = TitleBar
 
 Instance.new("UICorner", Close).CornerRadius = UDim.new(0,5)
 
--- ПЕРЕТАСКИВАНИЕ ОКНА
 local Dragging, DragStart, StartPos = false, nil, nil
 
 TitleBar.InputBegan:Connect(function(Input)
@@ -223,7 +228,7 @@ Scroll.Size = UDim2.new(1,-10,1,-40)
 Scroll.Position = UDim2.new(0,5,0,40)
 Scroll.BackgroundTransparency = 1
 Scroll.BorderSizePixel = 0
-Scroll.CanvasSize = UDim2.new(0,0,0,270)
+Scroll.CanvasSize = UDim2.new(0,0,0,350)
 Scroll.ScrollBarThickness = 4
 Scroll.Parent = Panel
 
@@ -246,8 +251,12 @@ local FarmBtn = CreateButton(L("autofarm") .. ": " .. L("off"), 2)
 local ESPBtn = CreateButton(L("esp") .. ": " .. L("off"), 46)
 local GrabBtn = CreateButton(L("grabgun") .. ": " .. L("off"), 90)
 local SpeedBtn = CreateButton(L("speed") .. ": " .. L("off"), 134)
-local AFKBtn = CreateButton(L("afk") .. ": " .. L("off"), 178)
-local KickBtn = CreateButton(L("kick"), 222)
+local SpinBtn = CreateButton(L("spin") .. ": " .. L("off"), 178)
+local FlingBtn = CreateButton(L("fling"), 222)
+local AFKBtn = CreateButton(L("afk") .. ": " .. L("off"), 266)
+local KickBtn = CreateButton(L("kick"), 310)
+
+FlingBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 20)
 KickBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 
 local function SetBtn(Btn, Text, On)
@@ -445,7 +454,65 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 5. АНТИ-АФК
+-- 5. БЫСТРОЕ ВРАЩЕНИЕ (SPINBOT)
+SpinBtn.Activated:Connect(function()
+    SpinBotEnabled = not SpinBotEnabled
+    SetBtn(SpinBtn, L("spin"), SpinBotEnabled)
+end)
+
+RunService.RenderStepped:Connect(function()
+    if SpinBotEnabled and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        Player.Character.HumanoidRootPart.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0)
+    end
+end)
+
+-- 6. FLING ALL (ВЫКИДЫВАНИЕ ВСЕХ ЗА КАРТУ)
+FlingBtn.Activated:Connect(function()
+    if FlingingAll then return end
+    FlingingAll = true
+    FlingBtn.Text = "⏳ Выкидывание..."
+    
+    task.spawn(function()
+        local Char = Player.Character
+        local Root = Char and Char:FindFirstChild("HumanoidRootPart")
+        if not Root then FlingingAll = false; FlingBtn.Text = L("fling"); return end
+        
+        local SavedCFrame = Root.CFrame
+        
+        -- Создаем безумную скорость вращения для импульса
+        local AngularVelocity = Instance.new("BodyAngularVelocity")
+        AngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        AngularVelocity.AngularVelocity = Vector3.new(0, 99999, 0)
+        AngularVelocity.Parent = Root
+        
+        for _, Target in ipairs(Players:GetPlayers()) do
+            if Target ~= Player and Target.Character and Target.Character:FindFirstChild("HumanoidRootPart") then
+                local TargetRoot = Target.Character.HumanoidRootPart
+                
+                -- Телепортируемся прямо внутрь игрока на 1 секунду для столкновения
+                local StartTime = tick()
+                while tick() - StartTime < 0.8 do
+                    if TargetRoot and TargetRoot.Parent then
+                        Root.CFrame = TargetRoot.CFrame * CFrame.new(0, 0, 0)
+                        Root.Velocity = Vector3.new(9999, 9999, 9999)
+                    end
+                    task.wait()
+                end
+            end
+        end
+        
+        AngularVelocity:Destroy()
+        Root.Velocity = Vector3.new(0, 0, 0)
+        Root.RotVelocity = Vector3.new(0, 0, 0)
+        
+        -- Возвращаемся на исходную позицию
+        Root.CFrame = SavedCFrame
+        FlingingAll = false
+        FlingBtn.Text = L("fling")
+    end)
+end)
+
+-- 7. АНТИ-АФК
 AFKBtn.Activated:Connect(function()
     AntiAFK = not AntiAFK
     SetBtn(AFKBtn, L("afk"), AntiAFK)
@@ -462,9 +529,9 @@ task.spawn(function()
     end
 end)
 
--- 6. КНОПКА ВЫКИДОМ С СЕРВЕРА
+-- 8. ВЫХОД С СЕРВЕРА
 KickBtn.Activated:Connect(function()
     Player:Kick("Вы вышли с сервера с помощью KIRILL_PANEL NO KEY V1.")
 end)
 
-print("⚡ KIRILL_PANEL NO KEY V1 UPDATED")
+print("⚡ KIRILL_PANEL NO KEY V1 LOADED WITH FLING ALL")
