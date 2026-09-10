@@ -114,7 +114,7 @@ local T = {
 
     ru = {
         title = "KIRILL_PANEL NO KEY V1",
-        autofarm = "🪙 Авто-Сбор Монет",
+        autofarm = "💵 Авто-Сбор Монет",
         esp = "👁️ ESP (Подсветка)",
         grabgun = "🔫 Авто-Забор Пушки",
         speed = "⚡ Скорость Бега",
@@ -126,7 +126,7 @@ local T = {
 
     en = {
         title = "KIRILL_PANEL NO KEY V1",
-        autofarm = "🪙 Auto-Farm Coins",
+        autofarm = "💵 Auto-Farm Coins",
         esp = "👁️ ESP Player Roles",
         grabgun = "🔫 Auto-Grab Gun",
         speed = "⚡ WalkSpeed",
@@ -143,7 +143,7 @@ local function L(Name)
 end
 
 --==================================================
--- GUI ИНТЕРФЕЙС
+-- GUI
 --==================================================
 
 local Gui = Instance.new("ScreenGui")
@@ -399,7 +399,7 @@ RunService.Stepped:Connect(function()
 end)
 
 --==================================================
--- НОВЫЙ ПОИСК ОБЪЕКТОВ МОНЕТ
+-- ПОИСК МОНЕТ
 --==================================================
 
 local function GetCoins()
@@ -410,7 +410,6 @@ local function GetCoins()
         Workspace:GetDescendants()
     ) do
 
-        -- Обычная деталь
         if Object:IsA("BasePart") then
 
             local Name =
@@ -424,8 +423,7 @@ local function GetCoins()
                 or string.find(Name,"snowflake")
                 or string.find(Name,"candy") then
 
-                if Object.Transparency < 1
-                    and Object.CanQuery ~= false then
+                if Object.Transparency < 1 then
 
                     table.insert(
                         Coins,
@@ -436,7 +434,6 @@ local function GetCoins()
 
             end
 
-        -- Модель
         elseif Object:IsA("Model") then
 
             local Name =
@@ -475,12 +472,12 @@ local function GetCoins()
 end
 
 --==================================================
--- ТЕЛЕПОРТАЦИЯ К МОНЕТАМ
+-- ДВИЖЕНИЕ К МОНЕТАМ
 --==================================================
 
 task.spawn(function()
 
-    while task.wait(0.15) do
+    while task.wait(0.05) do
 
         if AutoFarmCoins then
 
@@ -495,31 +492,69 @@ task.spawn(function()
                         "HumanoidRootPart"
                     )
 
-                if not Root then
+                local Humanoid =
+                    Character
+                    and Character:FindFirstChild(
+                        "Humanoid"
+                    )
+
+                if not Root or not Humanoid then
                     return
                 end
+
+                -- Такая же скорость, как
+                -- у "Скорость Бега"
+                local FarmSpeed = 24
+
+                Humanoid.WalkSpeed =
+                    FarmSpeed
 
                 local Coins =
                     GetCoins()
 
-                for _, Coin in ipairs(Coins) do
+                if #Coins == 0 then
+                    return
+                end
 
-                    if not AutoFarmCoins then
-                        break
-                    end
+                -- Ищем ближайшую монету
+                local NearestCoin = nil
+                local NearestDistance =
+                    math.huge
+
+                for _, Coin in ipairs(Coins) do
 
                     if Coin
                         and Coin.Parent
                         and Coin:IsA("BasePart")
                         and Coin.Transparency < 1 then
 
-                        Root.CFrame =
-                            Coin.CFrame
-                            + Vector3.new(0,2,0)
+                        local Distance =
+                            (
+                                Root.Position
+                                - Coin.Position
+                            ).Magnitude
 
-                        task.wait(0.12)
+                        if Distance <
+                            NearestDistance then
+
+                            NearestDistance =
+                                Distance
+
+                            NearestCoin =
+                                Coin
+
+                        end
 
                     end
+
+                end
+
+                if NearestCoin then
+
+                    -- Движение, а НЕ телепорт
+                    Humanoid:MoveTo(
+                        NearestCoin.Position
+                    )
 
                 end
 
