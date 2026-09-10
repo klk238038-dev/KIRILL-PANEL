@@ -29,6 +29,7 @@ local ESPCache = {}
 --==================================================
 
 local OldGui = PlayerGui:FindFirstChild("KIRILL_PANEL_NO_KEY_V1")
+
 if OldGui then
     OldGui:Destroy()
 end
@@ -204,6 +205,10 @@ Close.Parent = TitleBar
 
 Instance.new("UICorner", Close).CornerRadius = UDim.new(0,5)
 
+--==================================================
+-- ПЕРЕТАСКИВАНИЕ
+--==================================================
+
 local Dragging = false
 local DragStart = nil
 local StartPos = nil
@@ -252,6 +257,10 @@ UserInputService.InputChanged:Connect(function(Input)
     end
 
 end)
+
+--==================================================
+-- SCROLL
+--==================================================
 
 local Scroll = Instance.new("ScrollingFrame")
 Scroll.Size = UDim2.new(1,-10,1,-40)
@@ -316,6 +325,10 @@ local AFKBtn = CreateButton(
 
 FlingBtn.BackgroundColor3 = Color3.fromRGB(180,80,20)
 
+--==================================================
+-- СОСТОЯНИЕ КНОПОК
+--==================================================
+
 local function SetBtn(Btn, Text, On)
 
     if On then
@@ -331,6 +344,10 @@ local function SetBtn(Btn, Text, On)
     end
 
 end
+
+--==================================================
+-- ОТКРЫТИЕ / ЗАКРЫТИЕ
+--==================================================
 
 Open.Activated:Connect(function()
 
@@ -362,11 +379,10 @@ FarmBtn.Activated:Connect(function()
 
 end)
 
--- Убираем столкновения с частями своего персонажа
+-- Отключаем столкновения персонажа во время автофарма
 RunService.Stepped:Connect(function()
 
-    if AutoFarmCoins
-        and Player.Character then
+    if AutoFarmCoins and Player.Character then
 
         for _, Part in ipairs(
             Player.Character:GetDescendants()
@@ -382,115 +398,69 @@ RunService.Stepped:Connect(function()
 
 end)
 
--- Проверяем, является ли объект визуальной монетой
-local function IsCoinObject(Object)
+--==================================================
+-- НОВЫЙ ПОИСК ОБЪЕКТОВ МОНЕТ
+--==================================================
 
-    local Name = string.lower(Object.Name)
-
-    return
-        Name == "coin"
-        or Name == "coinvisual"
-        or Name == "coin_visual"
-        or Name == "coin_server"
-        or Name == "coinserver"
-        or Name == "snowflake"
-        or Name == "candy"
-
-end
-
--- Получаем BasePart из монеты
-local function GetCoinPart(Object)
-
-    if not Object then
-        return nil
-    end
-
-    if Object:IsA("BasePart") then
-        return Object
-    end
-
-    if Object:IsA("Model") then
-
-        if Object.PrimaryPart then
-            return Object.PrimaryPart
-        end
-
-        return Object:FindFirstChildWhichIsA(
-            "BasePart",
-            true
-        )
-
-    end
-
-    return Object:FindFirstChildWhichIsA(
-        "BasePart",
-        true
-    )
-
-end
-
--- Получаем все монеты
 local function GetCoins()
 
     local Coins = {}
-    local Added = {}
-
-    local function AddCoin(Object)
-
-        if not Object then
-            return
-        end
-
-        local Part = GetCoinPart(Object)
-
-        if not Part then
-            return
-        end
-
-        if Added[Part] then
-            return
-        end
-
-        if not Part:IsDescendantOf(Workspace) then
-            return
-        end
-
-        if Part.Transparency >= 1 then
-            return
-        end
-
-        Added[Part] = true
-        table.insert(Coins, Part)
-
-    end
 
     for _, Object in ipairs(
         Workspace:GetDescendants()
     ) do
 
-        -- Обычная / визуальная монета
-        if IsCoinObject(Object) then
-            AddCoin(Object)
-        end
+        -- Обычная деталь
+        if Object:IsA("BasePart") then
 
-        -- CoinContainer
-        local Name = string.lower(Object.Name)
+            local Name =
+                string.lower(Object.Name)
 
-        if Name == "coincontainer"
-            or Name == "coin_container" then
+            if Name == "coin"
+                or Name == "coins"
+                or Name == "snowflake"
+                or Name == "candy"
+                or string.find(Name,"coin")
+                or string.find(Name,"snowflake")
+                or string.find(Name,"candy") then
 
-            for _, Child in ipairs(
-                Object:GetChildren()
-            ) do
+                if Object.Transparency < 1
+                    and Object.CanQuery ~= false then
 
-                if Child.Name
-                    and (
-                        IsCoinObject(Child)
-                        or Child:IsA("BasePart")
-                        or Child:IsA("Model")
-                    ) then
+                    table.insert(
+                        Coins,
+                        Object
+                    )
 
-                    AddCoin(Child)
+                end
+
+            end
+
+        -- Модель
+        elseif Object:IsA("Model") then
+
+            local Name =
+                string.lower(Object.Name)
+
+            if Name == "coin"
+                or Name == "coins"
+                or string.find(Name,"coin")
+                or string.find(Name,"snowflake")
+                or string.find(Name,"candy") then
+
+                local Part =
+                    Object.PrimaryPart
+                    or Object:FindFirstChildWhichIsA(
+                        "BasePart",
+                        true
+                    )
+
+                if Part then
+
+                    table.insert(
+                        Coins,
+                        Part
+                    )
 
                 end
 
@@ -504,167 +474,52 @@ local function GetCoins()
 
 end
 
--- Находим ближайшую монету
-local function GetNearestCoin(Root, Coins)
+--==================================================
+-- ТЕЛЕПОРТАЦИЯ К МОНЕТАМ
+--==================================================
 
-    local Nearest = nil
-    local NearestDistance = math.huge
-
-    for _, Coin in ipairs(Coins) do
-
-        if Coin
-            and Coin.Parent
-            and Coin:IsDescendantOf(Workspace) then
-
-            local Distance =
-                (Root.Position - Coin.Position).Magnitude
-
-            if Distance < NearestDistance then
-
-                NearestDistance = Distance
-                Nearest = Coin
-
-            end
-
-        end
-
-    end
-
-    return Nearest
-
-end
-
--- Летим к монете со скоростью бега
-local function FlyToCoin(Root, Humanoid, Coin)
-
-    if not Root
-        or not Humanoid
-        or not Coin
-        or not Coin.Parent then
-
-        return
-
-    end
-
-    -- Если включена SpeedBoost, максимальная
-    -- скорость бега панели = 24
-    local RunSpeed = Humanoid.WalkSpeed
-
-    if RunSpeed < 24 then
-        RunSpeed = 24
-    end
-
-    while AutoFarmCoins
-        and Root.Parent
-        and Coin
-        and Coin.Parent
-        and Coin:IsDescendantOf(Workspace) do
-
-        local TargetPosition = Coin.Position
-        local CurrentPosition = Root.Position
-
-        local Difference =
-            TargetPosition - CurrentPosition
-
-        local Distance = Difference.Magnitude
-
-        -- Монета уже рядом
-        if Distance <= 3 then
-            break
-        end
-
-        local Direction = Difference.Unit
-
-        -- Поворачиваем персонажа к монете
-        Root.CFrame = CFrame.lookAt(
-            CurrentPosition,
-            TargetPosition
-        )
-
-        -- Полёт со скоростью бега
-        Root.AssemblyLinearVelocity =
-            Direction * RunSpeed
-
-        task.wait()
-
-    end
-
-    -- Останавливаемся после достижения монеты
-    if Root and Root.Parent then
-
-        Root.AssemblyLinearVelocity =
-            Vector3.zero
-
-    end
-
-end
-
--- Основной Auto-Farm
 task.spawn(function()
 
-    while task.wait(0.05) do
+    while task.wait(0.15) do
 
         if AutoFarmCoins then
 
             pcall(function()
 
-                local Char = Player.Character
+                local Character =
+                    Player.Character
 
-                local Root = Char
-                    and Char:FindFirstChild(
+                local Root =
+                    Character
+                    and Character:FindFirstChild(
                         "HumanoidRootPart"
                     )
 
-                local Humanoid = Char
-                    and Char:FindFirstChildOfClass(
-                        "Humanoid"
-                    )
-
-                if not Root or not Humanoid then
+                if not Root then
                     return
                 end
 
-                local Coins = GetCoins()
+                local Coins =
+                    GetCoins()
 
-                while AutoFarmCoins
-                    and #Coins > 0
-                    and Root.Parent do
+                for _, Coin in ipairs(Coins) do
 
-                    -- Берём ближайшую монету
-                    local Coin =
-                        GetNearestCoin(
-                            Root,
-                            Coins
-                        )
-
-                    if not Coin then
+                    if not AutoFarmCoins then
                         break
                     end
 
-                    -- Летим к ней
-                    FlyToCoin(
-                        Root,
-                        Humanoid,
-                        Coin
-                    )
+                    if Coin
+                        and Coin.Parent
+                        and Coin:IsA("BasePart")
+                        and Coin.Transparency < 1 then
 
-                    -- Удаляем её из текущего списка
-                    for Index = #Coins, 1, -1 do
+                        Root.CFrame =
+                            Coin.CFrame
+                            + Vector3.new(0,2,0)
 
-                        if Coins[Index] == Coin then
-
-                            table.remove(
-                                Coins,
-                                Index
-                            )
-
-                            break
-
-                        end
+                        task.wait(0.12)
 
                     end
-
-                    task.wait(0.03)
 
                 end
 
@@ -716,17 +571,32 @@ end)
 
 local function GetRole(TargetPlayer)
 
-    local Character = TargetPlayer.Character
-    local Backpack = TargetPlayer:FindFirstChild("Backpack")
+    local Character =
+        TargetPlayer.Character
 
-    if (Character and Character:FindFirstChild("Knife"))
-        or (Backpack and Backpack:FindFirstChild("Knife")) then
+    local Backpack =
+        TargetPlayer:FindFirstChild("Backpack")
+
+    if (
+        Character
+        and Character:FindFirstChild("Knife")
+    )
+    or (
+        Backpack
+        and Backpack:FindFirstChild("Knife")
+    ) then
 
         return "Убийца",
             Color3.fromRGB(255,0,0)
 
-    elseif (Character and Character:FindFirstChild("Gun"))
-        or (Backpack and Backpack:FindFirstChild("Gun")) then
+    elseif (
+        Character
+        and Character:FindFirstChild("Gun")
+    )
+    or (
+        Backpack
+        and Backpack:FindFirstChild("Gun")
+    ) then
 
         return "Шериф",
             Color3.fromRGB(0,120,255)
@@ -757,13 +627,18 @@ RunService.RenderStepped:Connect(function()
                 "Humanoid"
             ) then
 
-            local Char = Target.Character
-            local Root = Char.HumanoidRootPart
+            local Char =
+                Target.Character
 
-            local RoleText, RoleColor =
+            local Root =
+                Char.HumanoidRootPart
+
+            local RoleText,
+                RoleColor =
                 GetRole(Target)
 
-            local Data = ESPCache[Target]
+            local Data =
+                ESPCache[Target]
 
             if not Data then
 
@@ -775,12 +650,20 @@ RunService.RenderStepped:Connect(function()
                 Highlight.Name =
                     "MM2_ESP_Highlight"
 
-                Highlight.Adornee = Char
-                Highlight.FillTransparency = 0.4
-                Highlight.OutlineTransparency = 0
-                Highlight.Parent = Char
+                Highlight.Adornee =
+                    Char
 
-                Data.Highlight = Highlight
+                Highlight.FillTransparency =
+                    0.4
+
+                Highlight.OutlineTransparency =
+                    0
+
+                Highlight.Parent =
+                    Char
+
+                Data.Highlight =
+                    Highlight
 
                 local Billboard =
                     Instance.new("BillboardGui")
@@ -788,14 +671,17 @@ RunService.RenderStepped:Connect(function()
                 Billboard.Name =
                     "MM2_ESP_Billboard"
 
-                Billboard.Adornee = Root
+                Billboard.Adornee =
+                    Root
+
                 Billboard.Size =
                     UDim2.new(0,120,0,40)
 
                 Billboard.StudsOffset =
                     Vector3.new(0,3,0)
 
-                Billboard.AlwaysOnTop = true
+                Billboard.AlwaysOnTop =
+                    true
 
                 local Label =
                     Instance.new("TextLabel")
@@ -803,22 +689,38 @@ RunService.RenderStepped:Connect(function()
                 Label.Size =
                     UDim2.new(1,0,1,0)
 
-                Label.BackgroundTransparency = 1
-                Label.Font = Enum.Font.GothamBold
-                Label.TextSize = 12
-                Label.TextColor3 = RoleColor
-                Label.TextStrokeTransparency = 0.1
+                Label.BackgroundTransparency =
+                    1
+
+                Label.Font =
+                    Enum.Font.GothamBold
+
+                Label.TextSize =
+                    12
+
+                Label.TextColor3 =
+                    RoleColor
+
+                Label.TextStrokeTransparency =
+                    0.1
+
                 Label.TextStrokeColor3 =
                     Color3.fromRGB(0,0,0)
 
-                Label.Parent = Billboard
+                Label.Parent =
+                    Billboard
 
-                Billboard.Parent = Char
+                Billboard.Parent =
+                    Char
 
-                Data.Billboard = Billboard
-                Data.Label = Label
+                Data.Billboard =
+                    Billboard
 
-                ESPCache[Target] = Data
+                Data.Label =
+                    Label
+
+                ESPCache[Target] =
+                    Data
 
             end
 
@@ -838,12 +740,13 @@ RunService.RenderStepped:Connect(function()
 
             if MyRoot then
 
-                Dist = math.floor(
-                    (
-                        MyRoot.Position
-                        - Root.Position
-                    ).Magnitude
-                )
+                Dist =
+                    math.floor(
+                        (
+                            MyRoot.Position
+                            - Root.Position
+                        ).Magnitude
+                    )
 
             end
 
@@ -904,9 +807,11 @@ task.spawn(function()
 
             pcall(function()
 
-                local Char = Player.Character
+                local Char =
+                    Player.Character
 
-                local Root = Char
+                local Root =
+                    Char
                     and Char:FindFirstChild(
                         "HumanoidRootPart"
                     )
@@ -957,7 +862,8 @@ SpeedBtn.Activated:Connect(function()
             "Humanoid"
         ) then
 
-        Player.Character.Humanoid.WalkSpeed = 16
+        Player.Character.Humanoid.WalkSpeed =
+            16
 
     end
 
@@ -971,7 +877,8 @@ RunService.RenderStepped:Connect(function()
             "Humanoid"
         ) then
 
-        Player.Character.Humanoid.WalkSpeed = 24
+        Player.Character.Humanoid.WalkSpeed =
+            24
 
     end
 
@@ -988,13 +895,17 @@ FlingBtn.Activated:Connect(function()
     end
 
     FlingingAll = true
-    FlingBtn.Text = "⏳ Выкидывание..."
+
+    FlingBtn.Text =
+        "⏳ Выкидывание..."
 
     task.spawn(function()
 
-        local Char = Player.Character
+        local Char =
+            Player.Character
 
-        local Root = Char
+        local Root =
+            Char
             and Char:FindFirstChild(
                 "HumanoidRootPart"
             )
@@ -1008,7 +919,8 @@ FlingBtn.Activated:Connect(function()
 
         end
 
-        local SavedCFrame = Root.CFrame
+        local SavedCFrame =
+            Root.CFrame
 
         for _, Target in ipairs(
             Players:GetPlayers()
@@ -1023,7 +935,8 @@ FlingBtn.Activated:Connect(function()
                 local TargetRoot =
                     Target.Character.HumanoidRootPart
 
-                local StartTime = tick()
+                local StartTime =
+                    tick()
 
                 while tick() - StartTime < 0.8 do
 
@@ -1060,7 +973,9 @@ FlingBtn.Activated:Connect(function()
             SavedCFrame
 
         FlingingAll = false
-        FlingBtn.Text = L("fling")
+
+        FlingBtn.Text =
+            L("fling")
 
     end)
 
