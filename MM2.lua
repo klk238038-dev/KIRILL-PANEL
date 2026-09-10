@@ -24,6 +24,9 @@ local FlingingAll = false
 local CurrentLanguage = "ru"
 local ESPCache = {}
 
+-- Сохраняем CanCollide персонажа
+local SavedCollision = {}
+
 --==================================================
 -- УДАЛЯЕМ СТАРУЮ GUI
 --==================================================
@@ -364,8 +367,62 @@ Close.Activated:Connect(function()
 end)
 
 --==================================================
+-- ВОССТАНОВЛЕНИЕ COLLISION
+--==================================================
+
+local function RestoreCollision()
+
+    local Character = Player.Character
+
+    if not Character then
+        return
+    end
+
+    for Part, OldValue in pairs(SavedCollision) do
+
+        if Part and Part.Parent then
+            Part.CanCollide = OldValue
+        end
+
+    end
+
+    SavedCollision = {}
+
+end
+
+--==================================================
+-- ВКЛЮЧЕНИЕ NOCLIP
+--==================================================
+
+local function EnableNoClip()
+
+    local Character = Player.Character
+
+    if not Character then
+        return
+    end
+
+    for _, Part in ipairs(
+        Character:GetDescendants()
+    ) do
+
+        if Part:IsA("BasePart") then
+
+            if SavedCollision[Part] == nil then
+                SavedCollision[Part] = Part.CanCollide
+            end
+
+            Part.CanCollide = false
+
+        end
+
+    end
+
+end
+
+--==================================================
 -- 1. АВТО-СБОР МОНЕТ
--- ПОЛЁТ ПО ВСЕМ МОНЕТАМ
+-- ПОЛЁТ + NOCLIP
 --==================================================
 
 FarmBtn.Activated:Connect(function()
@@ -378,8 +435,15 @@ FarmBtn.Activated:Connect(function()
         AutoFarmCoins
     )
 
-    -- При выключении останавливаем полёт
-    if not AutoFarmCoins then
+    if AutoFarmCoins then
+
+        -- Сразу включаем NoClip
+        EnableNoClip()
+
+    else
+
+        -- Возвращаем столкновения
+        RestoreCollision()
 
         pcall(function()
 
@@ -392,8 +456,10 @@ FarmBtn.Activated:Connect(function()
                 )
 
             if Root then
+
                 Root.AssemblyLinearVelocity =
                     Vector3.new(0,0,0)
+
             end
 
         end)
@@ -414,7 +480,6 @@ local function GetCoins()
         Workspace:GetDescendants()
     ) do
 
-        -- Обычная деталь
         if Object:IsA("BasePart") then
 
             local Name =
@@ -439,7 +504,6 @@ local function GetCoins()
 
             end
 
-        -- Модель
         elseif Object:IsA("Model") then
 
             local Name =
@@ -508,44 +572,33 @@ task.spawn(function()
                     return
                 end
 
-                --======================================
-                -- СКОРОСТЬ
-                --======================================
+                -- NOCLIP
+                EnableNoClip()
 
+                -- Скорость полёта
                 local FlySpeed = 24
 
                 Humanoid.WalkSpeed =
                     FlySpeed
 
-                --======================================
-                -- ОТКЛЮЧАЕМ СТОЛКНОВЕНИЯ
-                --======================================
-
-                for _, Part in ipairs(
-                    Character:GetDescendants()
-                ) do
-
-                    if Part:IsA("BasePart") then
-                        Part.CanCollide = false
-                    end
-
-                end
-
-                --======================================
-                -- ПОЛУЧАЕМ МОНЕТЫ
-                --======================================
+                -- Отключаем обычное падение
+                Humanoid:ChangeState(
+                    Enum.HumanoidStateType.Physics
+                )
 
                 local Coins =
                     GetCoins()
 
                 if #Coins == 0 then
+
+                    Root.AssemblyLinearVelocity =
+                        Vector3.new(0,0,0)
+
                     return
+
                 end
 
-                --======================================
-                -- БЛИЖАЙШАЯ МОНЕТА
-                --======================================
-
+                -- Ищем ближайшую монету
                 local NearestCoin = nil
                 local NearestDistance =
                     math.huge
@@ -582,10 +635,7 @@ task.spawn(function()
                     return
                 end
 
-                --======================================
-                -- НАПРАВЛЕНИЕ ПОЛЁТА
-                --======================================
-
+                -- Направление полёта
                 local Difference =
                     NearestCoin.Position
                     - Root.Position
@@ -598,16 +648,14 @@ task.spawn(function()
                     local Direction =
                         Difference.Unit
 
-                    -- Летим прямо к монете.
-                    -- Это НЕ телепортация.
+                    -- Персонаж реально летит
+                    -- по воздуху к монете
                     Root.AssemblyLinearVelocity =
                         Direction * FlySpeed
 
                 else
 
-                    -- Уже возле монеты.
-                    -- Останавливаемся на мгновение,
-                    -- после чего берём следующую.
+                    -- Останавливаемся на монете
                     Root.AssemblyLinearVelocity =
                         Vector3.new(0,0,0)
 
@@ -616,6 +664,24 @@ task.spawn(function()
             end)
 
         end
+
+    end
+
+end)
+
+--==================================================
+-- ОБНОВЛЕНИЕ NOCLIP ПРИ RESPawn
+--==================================================
+
+Player.CharacterAdded:Connect(function(Character)
+
+    SavedCollision = {}
+
+    if AutoFarmCoins then
+
+        task.wait(0.5)
+
+        EnableNoClip()
 
     end
 
