@@ -365,6 +365,7 @@ end)
 
 --==================================================
 -- 1. АВТО-СБОР МОНЕТ
+-- ПОЛЁТ ПО ВСЕМ МОНЕТАМ
 --==================================================
 
 FarmBtn.Activated:Connect(function()
@@ -377,22 +378,25 @@ FarmBtn.Activated:Connect(function()
         AutoFarmCoins
     )
 
-end)
+    -- При выключении останавливаем полёт
+    if not AutoFarmCoins then
 
--- Отключаем столкновения персонажа во время автофарма
-RunService.Stepped:Connect(function()
+        pcall(function()
 
-    if AutoFarmCoins and Player.Character then
+            local Character = Player.Character
 
-        for _, Part in ipairs(
-            Player.Character:GetDescendants()
-        ) do
+            local Root =
+                Character
+                and Character:FindFirstChild(
+                    "HumanoidRootPart"
+                )
 
-            if Part:IsA("BasePart") then
-                Part.CanCollide = false
+            if Root then
+                Root.AssemblyLinearVelocity =
+                    Vector3.new(0,0,0)
             end
 
-        end
+        end)
 
     end
 
@@ -410,6 +414,7 @@ local function GetCoins()
         Workspace:GetDescendants()
     ) do
 
+        -- Обычная деталь
         if Object:IsA("BasePart") then
 
             local Name =
@@ -434,6 +439,7 @@ local function GetCoins()
 
             end
 
+        -- Модель
         elseif Object:IsA("Model") then
 
             local Name =
@@ -472,12 +478,12 @@ local function GetCoins()
 end
 
 --==================================================
--- ДВИЖЕНИЕ К МОНЕТАМ
+-- ПОЛЁТ КО ВСЕМ МОНЕТАМ
 --==================================================
 
 task.spawn(function()
 
-    while task.wait(0.05) do
+    while task.wait(0.03) do
 
         if AutoFarmCoins then
 
@@ -502,12 +508,32 @@ task.spawn(function()
                     return
                 end
 
-                -- Такая же скорость, как
-                -- у "Скорость Бега"
-                local FarmSpeed = 24
+                --======================================
+                -- СКОРОСТЬ
+                --======================================
+
+                local FlySpeed = 24
 
                 Humanoid.WalkSpeed =
-                    FarmSpeed
+                    FlySpeed
+
+                --======================================
+                -- ОТКЛЮЧАЕМ СТОЛКНОВЕНИЯ
+                --======================================
+
+                for _, Part in ipairs(
+                    Character:GetDescendants()
+                ) do
+
+                    if Part:IsA("BasePart") then
+                        Part.CanCollide = false
+                    end
+
+                end
+
+                --======================================
+                -- ПОЛУЧАЕМ МОНЕТЫ
+                --======================================
 
                 local Coins =
                     GetCoins()
@@ -516,7 +542,10 @@ task.spawn(function()
                     return
                 end
 
-                -- Ищем ближайшую монету
+                --======================================
+                -- БЛИЖАЙШАЯ МОНЕТА
+                --======================================
+
                 local NearestCoin = nil
                 local NearestDistance =
                     math.huge
@@ -549,12 +578,38 @@ task.spawn(function()
 
                 end
 
-                if NearestCoin then
+                if not NearestCoin then
+                    return
+                end
 
-                    -- Движение, а НЕ телепорт
-                    Humanoid:MoveTo(
-                        NearestCoin.Position
-                    )
+                --======================================
+                -- НАПРАВЛЕНИЕ ПОЛЁТА
+                --======================================
+
+                local Difference =
+                    NearestCoin.Position
+                    - Root.Position
+
+                local Distance =
+                    Difference.Magnitude
+
+                if Distance > 2 then
+
+                    local Direction =
+                        Difference.Unit
+
+                    -- Летим прямо к монете.
+                    -- Это НЕ телепортация.
+                    Root.AssemblyLinearVelocity =
+                        Direction * FlySpeed
+
+                else
+
+                    -- Уже возле монеты.
+                    -- Останавливаемся на мгновение,
+                    -- после чего берём следующую.
+                    Root.AssemblyLinearVelocity =
+                        Vector3.new(0,0,0)
 
                 end
 
